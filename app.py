@@ -24,22 +24,20 @@ def get_model_opt(use_cuda=False):
     options = namedtuple('options', ['fine_width', 'fine_height', 'radius', 'grid_size', 'use_cuda'])
     return options(fine_width=192, fine_height=256, radius=5, grid_size=5, use_cuda=use_cuda)
 
-def parse_opt():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--dataroot", default = "data")
-    parser.add_argument("--datamode", default = "test")
-    parser.add_argument("--data_list", default = "test_pairs.txt")
-    parser.add_argument("--result_dir", type=str, default="predictions", help="save inference result")
-    parser.add_argument("--gpu_ids", default = "")
-    parser.add_argument("--use_cuda", action=argparse.BooleanOptionalAction, default = False)
-    parser.add_argument("--fine_width", type=int, default = 192)
-    parser.add_argument("--fine_height", type=int, default = 256)
-    parser.add_argument("--radius", type=int, default = 3)
-    parser.add_argument("--stage", default = "GMM")
-
-    opt = parser.parse_args()
-    return opt
-
+# Replace argparse with a dictionary of options for Gunicorn
+def get_default_options():
+    return {
+        'dataroot': 'data',
+        'datamode': 'test',
+        'data_list': 'test_pairs.txt',
+        'result_dir': 'predictions',
+        'gpu_ids': '',
+        'use_cuda': False,
+        'fine_width': 192,
+        'fine_height': 256,
+        'radius': 3,
+        'stage': 'GMM'
+    }
 
 # Health check endpoint
 @app.route('/', methods=['GET'])
@@ -51,8 +49,8 @@ def tryon():
     if 'person' not in request.files or 'cloth' not in request.files:
         return jsonify({'error': 'Missing files'}), 400
     
-    opt = parse_opt()
-    model_opts = get_model_opt(use_cuda=opt.use_cuda)
+    opt =  get_default_options()
+    model_opts = get_model_opt(use_cuda=False)
 
     pretrained_gmm_path = os.path.join("checkpoints", "train_gmm_200K", "gmm_final.pth")
     pretrained_tom_path = os.path.join("checkpoints", "train_tom_200K", "tom_final.pth")
@@ -65,7 +63,7 @@ def tryon():
     inputs = data_loader[0]
 
     # Prepare inputs
-    if opt.use_cuda:
+    if opt['use_cuda']:
         agnostic = inputs['agnostic'].cuda()
         c = inputs['cloth'].cuda()
         cm = inputs['cloth_mask'].cuda()
@@ -85,7 +83,7 @@ def tryon():
 
  # GMM predictions
     model = GMM(model_opts)
-    load_checkpoint(model, pretrained_gmm_path, opt.use_cuda)
+    load_checkpoint(model, pretrained_gmm_path, opt['use_cuda'])
 
     # Inference - GMM
     with torch.no_grad():
@@ -96,7 +94,7 @@ def tryon():
 
         # TOM predictions
     model_tom = UnetGenerator(25, 4, 6, ngf=64, norm_layer=nn.InstanceNorm2d)
-    load_checkpoint(model_tom, pretrained_tom_path, opt.use_cuda)
+    load_checkpoint(model_tom, pretrained_tom_path, opt['use_cuda'])
 
     with torch.no_grad():
         outputs = model_tom(torch.cat([agnostic, warped_cloth], 1))

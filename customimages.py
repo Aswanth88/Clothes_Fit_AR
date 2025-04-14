@@ -36,14 +36,14 @@ class CPDataset(data.Dataset):
         super().__init__()
 
         self.opt = opt
-        self.root = opt.dataroot
-        self.datamode = opt.datamode  # train or test or self-defined
-        self.stage = opt.stage  # GMM or TOM
-        self.data_list = opt.data_list
-        self.fine_height = opt.fine_height
-        self.fine_width = opt.fine_width
-        self.radius = opt.radius
-        self.data_path = osp.join(opt.dataroot, opt.datamode)
+        self.root = opt['dataroot']
+        self.datamode = opt['datamode']  # train or test or self-defined
+        self.stage = opt['stage'] # GMM or TOM
+        self.data_list = opt['data_list']
+        self.fine_height = opt['fine_height'] 
+        self.fine_width = opt['fine_width']  
+        self.radius =  opt['radius'] 
+        self.data_path = osp.join(opt['dataroot'], opt['datamode']) 
 
         self.pose_net = PoseEstimationWithMobileNet()
         checkpoint_path = "checkpoints/checkpoint_iter_370000.pth"
